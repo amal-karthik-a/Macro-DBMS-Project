@@ -1,0 +1,133 @@
+mysql> CREATE TABLE student (stud_id VARCHAR(5) PRIMARY KEY,l_name VARCHAR(20),f_name VARCHAR(20),email VARCHAR(50),contact INT,address VARCHAR(75),passout_yr INT,room_id INT,PM_name VARCHAR(15),PF_Name VARCHAR(15),P_contact VARCHAR(15) UNIQUE,remark VARCHAR(10),dob DATE,gender VARCHAR(1),class VARCHAR(3),section VARCHAR(1),roll_no INT,adm_no INT UNIQUE
+);
+
+mysql> desc student;
++------------+-------------+------+-----+---------+-------+
+| Field      | Type        | Null | Key | Default | Extra |
++------------+-------------+------+-----+---------+-------+
+| stud_id    | varchar(5)  | NO   | PRI | NULL    |       |
+| f_name     | varchar(20) | YES  |     | NULL    |       |
+| l_name     | varchar(20) | YES  |     | NULL    |       |
+| email      | varchar(50) | YES  |     | NULL    |       |
+| contact    | int         | YES  |     | NULL    |       |
+| address    | varchar(75) | YES  |     | NULL    |       |
+| passout_yr | int         | YES  |     | NULL    |       |
+| room_id    | int         | YES  |     | NULL    |       |
+| PM_name    | varchar(15) | YES  |     | NULL    |       |
+| PF_Name    | varchar(15) | YES  |     | NULL    |       |
+| P_contact  | varchar(15) | YES  | UNI | NULL    |       |
+| remark     | varchar(10) | YES  |     | NULL    |       |
+| dob        | date        | YES  |     | NULL    |       |
+| gender     | varchar(1)  | YES  |     | NULL    |       |
+| class      | varchar(3)  | YES  |     | NULL    |       |
+| section    | varchar(1)  | YES  |     | NULL    |       |
+| roll_no    | int         | YES  |     | NULL    |       |
+| adm_no     | int         | YES  | UNI | NULL    |       |
++------------+-------------+------+-----+---------+-------+
+18 rows in set (0.00 sec)
+
+mysql> CREATE TABLE fee (stud_id VARCHAR(10) PRIMARY key,rent int,mess int,paid_date DATE,status VARCHAR(20),due_date date,FOREIGN KEY (stud_id) REFERENCES student(stud_id));
+
+mysql> desc fee;
++-----------+-------------+------+-----+---------+-------+
+| Field     | Type        | Null | Key | Default | Extra |
++-----------+-------------+------+-----+---------+-------+
+| stud_id   | varchar(10) | NO   | PRI | NULL    |       |
+| rent      | int         | YES  |     | NULL    |       |
+| mess      | int         | YES  |     | NULL    |       |
+| paid_date | date        | YES  |     | NULL    |       |
+| status    | varchar(20) | YES  |     | NULL    |       |
+| due_date  | date        | YES  |     | NULL    |       |
++-----------+-------------+------+-----+---------+-------+
+6 rows in set (0.00 sec)
+
+mysql> CREATE TABLE check_out (stud_id VARCHAR(5),check_out_date DATE,check_in_date DATE,status VARCHAR(10),purpose VARCHAR(50),g_id INT NOT NULL AUTO_INCREMENT,PRIMARY KEY (g_id),FOREIGN KEY (stud_id) REFERENCES student(stud_id));
+
+mysql> desc check_out;
++----------------+-------------+------+-----+---------+----------------+
+| Field          | Type        | Null | Key | Default | Extra          |
++----------------+-------------+------+-----+---------+----------------+
+| stud_id        | varchar(5)  | YES  | MUL | NULL    |                |
+| check_out_date | date        | YES  |     | NULL    |                |
+| check_in_date  | date        | YES  |     | NULL    |                |
+| status         | varchar(10) | YES  |     | NULL    |                |
+| purpose        | varchar(50) | YES  |     | NULL    |                |
+| g_id           | int         | NO   | PRI | NULL    | auto_increment |
++----------------+-------------+------+-----+---------+----------------+
+6 rows in set (0.00 sec)
+
+mysql> CREATE TABLE feedback (fb_no INT NOT NULL AUTO_INCREMENT,stud_id VARCHAR(5),Type CHAR(1),content VARCHAR(200),status INT DEFAULT 0,PRIMARY KEY (fb_no),FOREIGN KEY (stud_id) REFERENCES student(stud_id))
+
+mysql> desc feedback;
++---------+--------------+------+-----+---------+----------------+
+| Field   | Type         | Null | Key | Default | Extra          |
++---------+--------------+------+-----+---------+----------------+
+| fb_no   | int          | NO   | PRI | NULL    | auto_increment |
+| stud_id | varchar(5)   | YES  |     | NULL    |                |
+| Type    | char(1)      | YES  |     | NULL    |                |
+| content | varchar(200) | YES  |     | NULL    |                |
+| status  | int          | YES  |     | 0       |                |
++---------+--------------+------+-----+---------+----------------+
+5 rows in set (0.00 sec)
+
+mysql> CREATE TABLE login (stud_id VARCHAR(5) NOT NULL,passwd VARCHAR(20),PRIMARY KEY (stud_id),FOREIGN KEY (stud_id) REFERENCES student(stud_id));
+
+mysql> desc login;
++---------+-------------+------+-----+---------+-------+
+| Field   | Type        | Null | Key | Default | Extra |
++---------+-------------+------+-----+---------+-------+
+| stud_id | varchar(5)  | NO   | PRI | NULL    |       |
+| passwd  | varchar(20) | YES  |     | NULL    |       |
++---------+-------------+------+-----+---------+-------+
+2 rows in set (0.00 sec)
+
+*** 2 Triggers ***
+
+1. check_due_date_before_insert
+
+DELIMITER //
+
+CREATE TRIGGER check_due_date_before_insert
+BEFORE INSERT ON fee
+FOR EACH ROW
+BEGIN
+    IF NEW.due_date < CURDATE() THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Due date must be today or later.';
+    END IF;
+END //
+
+CREATE TRIGGER check_due_date_before_update
+BEFORE UPDATE ON fee
+FOR EACH ROW
+BEGIN
+    IF NEW.due_date < CURDATE() THEN
+        SIGNAL SQLSTATE '45000' 
+        SET MESSAGE_TEXT = 'Due date must be today or later.';
+    END IF;
+END //
+
+DELIMITER ;
+
+2. after_student_insert
+
+DELIMITER $$
+
+DROP TRIGGER IF EXISTS after_student_insert$$
+
+CREATE TRIGGER after_student_insert
+AFTER INSERT ON student
+FOR EACH ROW
+BEGIN
+    DECLARE random_password VARCHAR(255);
+
+    -- Generate a random password
+    SET random_password = LEFT(UUID(), 8); -- Use the first 8 characters of UUID as a password
+
+    -- Insert into login table
+    INSERT INTO login (stud_id, password)
+    VALUES (NEW.stud_id, random_password);
+END$$
+
+DELIMITER ;
+
